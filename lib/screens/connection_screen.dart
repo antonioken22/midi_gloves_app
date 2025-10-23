@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:midi_gloves_app/providers/loading_provider.dart';
 import 'package:provider/provider.dart';
 import '../providers/bluetooth_provider.dart';
 import '../widgets/bluetooth_off_screen.dart';
@@ -14,7 +15,25 @@ class ConnectionScreen extends StatelessWidget {
     final btProviderReader = context.read<BluetoothProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Connect to MIDI Gloves')),
+      appBar: AppBar(
+        title: const Text('Connect to MIDI Gloves'),
+        actions: [
+          if (btProvider.adapterState == BluetoothAdapterState.on &&
+              btProvider.connectedDevice == null)
+            // Show scan/stop button
+            btProvider.isScanning
+                ? IconButton(
+                    icon: const Icon(Icons.stop),
+                    onPressed: () => btProviderReader.stopScan(),
+                    tooltip: 'Stop Scanning',
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () => btProviderReader.startScan(),
+                    tooltip: 'Scan for New Devices',
+                  ),
+        ],
+      ),
       body: _buildMainView(context, btProvider, btProviderReader),
     );
   }
@@ -24,53 +43,134 @@ class ConnectionScreen extends StatelessWidget {
     BluetoothProvider provider,
     BluetoothProvider reader,
   ) {
-    if (provider.adapterState == BluetoothAdapterState.on) {
-      return _buildScannerView(context, provider, reader);
-    } else {
-      return const BluetoothOffScreen();
-    }
-  }
-
-  Widget _buildScannerView(
-    BuildContext context,
-    BluetoothProvider provider,
-    BluetoothProvider reader,
-  ) {
     if (provider.connectedDevice != null) {
       return _buildConnectedView(context, provider, reader);
     }
 
+    if (provider.adapterState == BluetoothAdapterState.on) {
+      return _buildScanningView(context, provider, reader);
+    }
+
+    return const BluetoothOffScreen();
+  }
+
+  Widget _buildScanningView(
+    BuildContext context,
+    BluetoothProvider provider,
+    BluetoothProvider reader,
+  ) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: ElevatedButton.icon(
-            icon: Icon(provider.isScanning ? Icons.stop : Icons.search),
-            label: Text(provider.isScanning ? 'Stop Scan' : 'Start Scan'),
-            onPressed: reader.toggleScan,
-          ),
-        ),
+        // List of Bonded (Paired) Devices
+        _buildSectionTitle(context, 'Paired Devices'),
+        _buildBondedDevicesList(context, provider, reader),
+
         const Divider(height: 1),
-        Expanded(
-          child: provider.scanResults.isEmpty
-              ? Center(
-                  child: Text(
-                    provider.isScanning ? 'Scanning...' : 'No devices found.',
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: provider.scanResults.length,
-                  itemBuilder: (context, index) {
-                    final result = provider.scanResults[index];
-                    return ScanResultTile(
-                      result: result,
-                      onTap: () => reader.connect(result.device),
-                    );
-                  },
-                ),
-        ),
+
+        // List of Scanned (Available) Devices
+        _buildSectionTitle(context, 'Available Devices'),
+        if (provider.isScanning)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 16),
+                Text('Scanning for 10 seconds...'),
+              ],
+            ),
+          ),
+        _buildScanResultsList(context, provider, reader),
       ],
     );
+  }
+
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBondedDevicesList(
+    BuildContext context,
+    BluetoothProvider provider,
+    BluetoothProvider reader,
+  ) {
+    final loadingProvider = context.read<LoadingProvider>();
+
+    return provider.bondedDevices.isEmpty
+        ? const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'No paired devices found.\nTry scanning for new devices below.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        : ListView.builder(
+            itemCount: provider.bondedDevices.length,
+            itemBuilder: (context, index) {
+              final device = provider.bondedDevices[index];
+              return ListTile(
+                title: Text(
+                  device.platformName.isNotEmpty
+                      ? device.platformName
+                      : 'Unknown Device',
+                ),
+                subtitle: Text('MAC: ${device.remoteId.str} (Paired)'),
+                trailing: ElevatedButton(
+                  onPressed: () =>
+                      loadingProvider.runTask(() => reader.connect(device)),
+                  child: const Text('Connect'),
+                ),
+                onTap: () =>
+                    loadingProvider.runTask(() => reader.connect(device)),
+              );
+            },
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+          );
+  }
+
+  Widget _buildScanResultsList(
+    BuildContext context,
+    BluetoothProvider provider,
+    BluetoothProvider reader,
+  ) {
+    final loadingProvider = context.read<LoadingProvider>();
+
+    return provider.scanResults.isEmpty && !provider.isScanning
+        ? const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'No new devices found.\nTap the search icon to scan.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        : Expanded(
+            child: ListView.builder(
+              itemCount: provider.scanResults.length,
+              itemBuilder: (context, index) {
+                final result = provider.scanResults[index];
+                return ScanResultTile(
+                  result: result,
+                  onTap: () => loadingProvider.runTask(
+                    () => reader.connect(result.device),
+                  ),
+                );
+              },
+            ),
+          );
   }
 
   Widget _buildConnectedView(
@@ -78,9 +178,11 @@ class ConnectionScreen extends StatelessWidget {
     BluetoothProvider provider,
     BluetoothProvider reader,
   ) {
+    final loadingProvider = context.read<LoadingProvider>();
     final deviceName = provider.connectedDevice!.platformName.isNotEmpty
         ? provider.connectedDevice!.platformName
         : 'Unknown Device';
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -91,7 +193,7 @@ class ConnectionScreen extends StatelessWidget {
           Text(deviceName, style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 20),
           ElevatedButton(
-            onPressed: reader.disconnect,
+            onPressed: () => loadingProvider.runTask(() => reader.disconnect()),
             child: const Text('Disconnect'),
           ),
         ],
