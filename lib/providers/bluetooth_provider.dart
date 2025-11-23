@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -156,8 +157,16 @@ class BluetoothProvider with ChangeNotifier {
       if (char != null) {
         await char.setNotifyValue(true);
         _dataSub = char.onValueReceived.listen((value) {
-          _gloveData = GloveData.fromBytes(value);
-          notifyListeners();
+          try {
+            final String jsonString = utf8.decode(value);
+
+            if (jsonString.isNotEmpty) {
+              _gloveData = GloveData.fromJsonString(jsonString);
+              notifyListeners();
+            }
+          } catch (e) {
+            print("Error decoding or parsing BLE data: $e");
+          }
         });
       }
     } catch (e) {

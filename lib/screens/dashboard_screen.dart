@@ -60,9 +60,18 @@ class DashboardScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 16),
-            ValueTile(label: "X-Axis", value: gloveData.accelX.toString()),
-            ValueTile(label: "Y-Axis", value: gloveData.accelY.toString()),
-            ValueTile(label: "Z-Axis", value: gloveData.accelZ.toString()),
+            ValueTile(
+              label: "X-Axis",
+              value: gloveData.accelX.toStringAsFixed(2),
+            ),
+            ValueTile(
+              label: "Y-Axis",
+              value: gloveData.accelY.toStringAsFixed(2),
+            ),
+            ValueTile(
+              label: "Z-Axis",
+              value: gloveData.accelZ.toStringAsFixed(2),
+            ),
           ],
         ),
       ),
