@@ -83,6 +83,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? gloveOctave
         : _manualOctave;
 
+    // Determine if we are in manual mode (controls enabled)
+    final isManualMode =
+        btProvider.connectedDevice == null && !btProvider.isSimulating;
+
     return OrientationBuilder(
       builder: (context, orientation) {
         final isLandscape = orientation == Orientation.landscape;
@@ -125,112 +129,98 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     const Divider(height: 1),
-                    // Bottom: Piano with octave controls
+                    // Bottom: Piano with persistent controls
                     Expanded(
                       flex: 3,
                       child: Column(
                         children: [
-                          // Octave controls (only show in manual mode)
-                          if (btProvider.connectedDevice == null &&
-                              !btProvider.isSimulating)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_downward),
-                                    onPressed: _manualOctave > 0
-                                        ? () => setState(() => _manualOctave--)
+                          // Persistent Control Bar
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Sustain Toggle (Always visible)
+                                IconButton(
+                                  icon: Icon(
+                                    _sustainEnabled
+                                        ? Icons.my_library_music
+                                        : Icons.library_music_outlined,
+                                    color: _sustainEnabled
+                                        ? Colors.green
                                         : null,
-                                    tooltip: 'Lower Octave',
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
+                                  onPressed: _toggleSustain,
+                                  tooltip: 'Sustain Pedal',
+                                ),
+                                const SizedBox(width: 8),
+                                // Octave Down (Disabled in Sim/Glove mode)
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_downward),
+                                  onPressed: isManualMode && _manualOctave > 0
+                                      ? () => setState(() => _manualOctave--)
+                                      : null,
+                                  tooltip: 'Lower Octave',
+                                ),
+                                // Octave Display
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Octave: $octave',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
                                       color: Theme.of(
                                         context,
-                                      ).colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      'Octave: $octave',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimaryContainer,
-                                      ),
+                                      ).colorScheme.onPrimaryContainer,
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_upward),
-                                    onPressed: _manualOctave < 8
-                                        ? () => setState(() => _manualOctave++)
-                                        : null,
-                                    tooltip: 'Raise Octave',
-                                  ),
-                                ],
-                              ),
-                            ),
-                          // Keyboard
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                OctaveKeyboard(
-                                  octaveNumber: octave,
-                                  activeKeys: activeKeys,
-                                  onKeyPress: _onKeyPress,
-                                  onKeyRelease: _onKeyRelease,
                                 ),
-                                // Control buttons
-                                Positioned(
-                                  left: 16,
-                                  top: 16,
-                                  child: Column(
-                                    children: [
-                                      FloatingActionButton.small(
-                                        heroTag: 'sustain_portrait',
-                                        backgroundColor: _sustainEnabled
-                                            ? Colors.green
-                                            : Colors.grey,
-                                        onPressed: _toggleSustain,
-                                        tooltip: 'Sustain Pedal',
-                                        child: Icon(
-                                          _sustainEnabled
-                                              ? Icons.my_library_music
-                                              : Icons.library_music_outlined,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      FloatingActionButton.small(
-                                        heroTag: 'key_filter_portrait',
-                                        backgroundColor: _blackKeysMode
-                                            ? Colors.black
-                                            : Colors.white,
-                                        foregroundColor: _blackKeysMode
-                                            ? Colors.white
-                                            : Colors.black,
-                                        onPressed: _toggleKeyFilter,
-                                        tooltip: _blackKeysMode
-                                            ? 'Black Keys Mode'
-                                            : 'White Keys Mode',
-                                        child: Icon(
-                                          _blackKeysMode
-                                              ? Icons.piano_outlined
-                                              : Icons.piano,
-                                        ),
-                                      ),
-                                    ],
+                                // Octave Up (Disabled in Sim/Glove mode)
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_upward),
+                                  onPressed: isManualMode && _manualOctave < 8
+                                      ? () => setState(() => _manualOctave++)
+                                      : null,
+                                  tooltip: 'Raise Octave',
+                                ),
+                                const SizedBox(width: 8),
+                                // Key Filter Toggle (Always visible)
+                                IconButton(
+                                  icon: Icon(
+                                    _blackKeysMode
+                                        ? Icons.piano_outlined
+                                        : Icons.piano,
+                                    color: _blackKeysMode
+                                        ? Theme.of(context).colorScheme.primary
+                                        : null,
                                   ),
+                                  onPressed: _toggleKeyFilter,
+                                  tooltip: _blackKeysMode
+                                      ? 'Black Keys Mode'
+                                      : 'White Keys Mode',
                                 ),
                               ],
+                            ),
+                          ),
+                          // Keyboard
+                          Expanded(
+                            child: OctaveKeyboard(
+                              octaveNumber: octave,
+                              activeKeys: activeKeys,
+                              onKeyPress: _onKeyPress,
+                              onKeyRelease: _onKeyRelease,
                             ),
                           ),
                         ],
@@ -261,7 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          // Flex sensors in a row
+                          // Flex sensors
                           _miniDataChip("T", gloveData.flex1),
                           _miniDataChip("I", gloveData.flex2),
                           _miniDataChip("M", gloveData.flex3),
@@ -273,110 +263,125 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _miniAccelChip("Y", gloveData.accelY),
                           _miniAccelChip("Z", gloveData.accelZ),
                           const VerticalDivider(),
-                          // Octave indicator
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                          // Simulate Button (Landscape)
+                          TextButton.icon(
+                            onPressed: () => context
+                                .read<BluetoothProvider>()
+                                .toggleSimulation(),
+                            icon: Icon(
+                              btProvider.isSimulating
+                                  ? Icons.stop
+                                  : Icons.play_arrow,
+                              size: 20,
                             ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(16),
+                            label: Text(
+                              btProvider.isSimulating ? "Stop" : "Simulate",
+                              style: const TextStyle(fontSize: 12),
                             ),
-                            child: Text(
-                              "Oct: $octave",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    // Center: Piano (Maximized) with octave controls
+                    // Center: Piano (Maximized) with persistent controls
                     Expanded(
-                      child: Stack(
+                      child: Column(
                         children: [
-                          OctaveKeyboard(
-                            octaveNumber: octave,
-                            activeKeys: activeKeys,
-                            onKeyPress: _onKeyPress,
-                            onKeyRelease: _onKeyRelease,
-                          ),
-                          // Sustain and key filter buttons (left side)
-                          Positioned(
-                            left: 16,
-                            top: 16,
-                            child: Column(
+                          // Persistent Control Bar (Landscape - Top Row)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                FloatingActionButton.small(
-                                  heroTag: 'sustain_landscape',
-                                  backgroundColor: _sustainEnabled
-                                      ? Colors.green
-                                      : Colors.grey,
-                                  onPressed: _toggleSustain,
-                                  tooltip: 'Sustain Pedal',
-                                  child: Icon(
+                                // Sustain Toggle
+                                IconButton(
+                                  icon: Icon(
                                     _sustainEnabled
                                         ? Icons.my_library_music
                                         : Icons.library_music_outlined,
+                                    color: _sustainEnabled
+                                        ? Colors.green
+                                        : null,
+                                  ),
+                                  onPressed: _toggleSustain,
+                                  tooltip: 'Sustain Pedal',
+                                ),
+                                const SizedBox(width: 8),
+                                // Octave Down
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_downward),
+                                  onPressed: isManualMode && _manualOctave > 0
+                                      ? () => setState(() => _manualOctave--)
+                                      : null,
+                                  tooltip: 'Lower Octave',
+                                ),
+                                // Octave Display
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'Octave: $octave',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimaryContainer,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                FloatingActionButton.small(
-                                  heroTag: 'key_filter_landscape',
-                                  backgroundColor: _blackKeysMode
-                                      ? Colors.black
-                                      : Colors.white,
-                                  foregroundColor: _blackKeysMode
-                                      ? Colors.white
-                                      : Colors.black,
+                                // Octave Up
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_upward),
+                                  onPressed: isManualMode && _manualOctave < 8
+                                      ? () => setState(() => _manualOctave++)
+                                      : null,
+                                  tooltip: 'Raise Octave',
+                                ),
+                                const SizedBox(width: 8),
+                                // Key Filter Toggle
+                                IconButton(
+                                  icon: Icon(
+                                    _blackKeysMode
+                                        ? Icons.piano_outlined
+                                        : Icons.piano,
+                                    color: _blackKeysMode
+                                        ? Theme.of(context).colorScheme.primary
+                                        : null,
+                                  ),
                                   onPressed: _toggleKeyFilter,
                                   tooltip: _blackKeysMode
                                       ? 'Black Keys Mode'
                                       : 'White Keys Mode',
-                                  child: Icon(
-                                    _blackKeysMode
-                                        ? Icons.piano_outlined
-                                        : Icons.piano,
-                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          // Octave controls (only show in manual mode)
-                          if (btProvider.connectedDevice == null &&
-                              !btProvider.isSimulating)
-                            Positioned(
-                              right: 16,
-                              top: 16,
-                              child: Column(
-                                children: [
-                                  FloatingActionButton.small(
-                                    heroTag: 'octave_up',
-                                    onPressed: _manualOctave < 8
-                                        ? () => setState(() => _manualOctave++)
-                                        : null,
-                                    tooltip: 'Raise Octave',
-                                    child: const Icon(Icons.arrow_upward),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  FloatingActionButton.small(
-                                    heroTag: 'octave_down',
-                                    onPressed: _manualOctave > 0
-                                        ? () => setState(() => _manualOctave--)
-                                        : null,
-                                    tooltip: 'Lower Octave',
-                                    child: const Icon(Icons.arrow_downward),
-                                  ),
-                                ],
-                              ),
+                          Expanded(
+                            child: OctaveKeyboard(
+                              octaveNumber: octave,
+                              activeKeys: activeKeys,
+                              onKeyPress: _onKeyPress,
+                              onKeyRelease: _onKeyRelease,
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -408,7 +413,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             widthFactor: (value / 100).clamp(0.0, 1.0),
             child: Container(
               decoration: BoxDecoration(
-                color: value > 50 ? Colors.green : Colors.blue,
+                color: Colors.blue, // Match Portrait
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -432,6 +437,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
         const SizedBox(width: 4),
+        Container(
+          width: 30,
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: ((value + 10) / 20).clamp(0.0, 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.orange, // Match Portrait
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 4),
         Text(
           value.toStringAsFixed(1),
           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
@@ -447,7 +471,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }) {
     final style = isCompact
         ? Theme.of(context).textTheme.titleSmall
-        : Theme.of(context).textTheme.headlineSmall;
+        : Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold);
 
     // Use a Column with MainAxisSize.min to take only needed space
     // Or use Spacer/Expanded to distribute space if we want it to fill
@@ -457,7 +483,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Distribute space
           children: [
-            Text("Flex Sensors", style: style),
+            Text("Flex Sensors (ZD10-100)", style: style),
             if (isCompact) ...[
               Text("T: ${gloveData.flex1}"),
               Text("I: ${gloveData.flex2}"),
@@ -465,29 +491,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text("R: ${gloveData.flex4}"),
               Text("P: ${gloveData.flex5}"),
             ] else ...[
-              // Use a Wrap or Row for sensors if vertical space is tight
-              // But for now, let's just make them compact
+              // 4 Columns for fingers (Top)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _compactSensor("Thumb", gloveData.flex1),
-                  _compactSensor("Index", gloveData.flex2),
-                  _compactSensor("Mid", gloveData.flex3),
+                  Expanded(
+                    child: Center(
+                      child: _compactSensor("Index", gloveData.flex2),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: _compactSensor("Mid", gloveData.flex3),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: _compactSensor("Ring", gloveData.flex4),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: _compactSensor("Pinky", gloveData.flex5),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
+              // Thumb separate (Bottom Left)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _compactSensor("Ring", gloveData.flex4),
-                  _compactSensor("Pinky", gloveData.flex5),
+                  Expanded(
+                    child: Center(
+                      child: _compactSensor("Thumb", gloveData.flex1),
+                    ),
+                  ),
+                  const Expanded(child: SizedBox()),
+                  const Expanded(child: SizedBox()),
+                  const Expanded(child: SizedBox()),
                 ],
               ),
             ],
 
             if (!isCompact) const Divider(),
 
-            Text("Accelerometer", style: style),
+            Text("Accelerometer (MPU9250)", style: style),
             if (isCompact) ...[
               Text("X: ${gloveData.accelX.toStringAsFixed(1)}"),
               Text("Y: ${gloveData.accelY.toStringAsFixed(1)}"),
@@ -496,9 +544,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _compactTile("X", gloveData.accelX.toStringAsFixed(1)),
-                  _compactTile("Y", gloveData.accelY.toStringAsFixed(1)),
-                  _compactTile("Z", gloveData.accelZ.toStringAsFixed(1)),
+                  _compactAccel("X", gloveData.accelX),
+                  _compactAccel("Y", gloveData.accelY),
+                  _compactAccel("Z", gloveData.accelZ),
                 ],
               ),
             ],
@@ -536,11 +584,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _compactTile(String label, String value) {
+  Widget _compactAccel(String label, double value) {
+    // Normalize accel value for display (assuming range -10 to 10 roughly)
+    // We'll map -10..10 to 0..1 for the bar
+    final normalized = ((value + 10) / 20).clamp(0.0, 1.0);
+
     return Column(
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text(value, style: const TextStyle(fontSize: 18)),
+        Container(
+          width: 40,
+          height: 10,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: normalized,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+          ),
+        ),
+        Text(value.toStringAsFixed(1)),
       ],
     );
   }

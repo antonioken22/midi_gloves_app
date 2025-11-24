@@ -42,7 +42,7 @@ class AudioManager {
 
   Future<void> _initializeDesktop() async {
     // Load SoundFont
-    ByteData byte = await rootBundle.load('assets/piano_font.sf2');
+    ByteData byte = await rootBundle.load('assets/sound_fonts/piano_font.sf2');
     final soundFont = SoundFont.fromByteData(byte);
     _synthesizer = Synthesizer.load(
       soundFont,
@@ -70,7 +70,9 @@ class AudioManager {
   Future<void> _initializeMobile() async {
     // Load SoundFont using loadSoundfontAsset which handles temp file internally
     // We need to provide the full asset path
-    await _midiPro.loadSoundfontAsset(assetPath: 'assets/piano_font.sf2');
+    await _midiPro.loadSoundfontAsset(
+      assetPath: 'assets/sound_fonts/piano_font.sf2',
+    );
     print("Initialized Mobile Audio (MidiPro)");
   }
 
@@ -94,6 +96,10 @@ class AudioManager {
     _audioStream!.push(interleaved);
   }
 
+  // Manual sustain tracking
+  bool _sustainEnabled = false;
+  final Set<int> _sustainedNotes = {};
+
   void playNote(int midiNote) {
     if (!_isInitialized) return;
     try {
@@ -111,6 +117,13 @@ class AudioManager {
 
   void stopNote(int midiNote) {
     if (!_isInitialized) return;
+
+    // If sustain is enabled, don't stop the note yet, just track it
+    if (_sustainEnabled) {
+      _sustainedNotes.add(midiNote);
+      return;
+    }
+
     try {
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         if (_synthesizer != null) {
@@ -125,21 +138,29 @@ class AudioManager {
   }
 
   void setSustain(bool enabled) {
-    if (!_isInitialized) return;
-    try {
-      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-        // dart_melty_soundfont doesn't support sustain directly
-        // Would need to implement custom sustain logic here
-      } else {
-        // flutter_midi_pro supports sustain via setSustain method
-        _midiPro.setSustain(enabled: enabled, channel: 0);
-        // When disabling sustain, stop all sustained notes
-        if (!enabled) {
-          _midiPro.stopAllNotes();
+    _sustainEnabled = enabled;
+
+    // If disabling sustain, stop all currently sustained notes
+    if (!enabled) {
+      for (final note in _sustainedNotes) {
+        try {
+          if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+            if (_synthesizer != null) {
+              _synthesizer!.noteOff(channel: 0, key: note);
+            }
+          } else {
+            _midiPro.stopNote(channel: 0, key: note);
+          }
+        } catch (e) {
+          print("Error stopping sustained note: $e");
         }
       }
-    } catch (e) {
-      print("Error setting sustain: $e");
+      _sustainedNotes.clear();
+
+      // Also call stopAllNotes on mobile to be safe against lingering sounds
+      if (Platform.isAndroid || Platform.isIOS) {
+        _midiPro.stopAllNotes();
+      }
     }
   }
 }

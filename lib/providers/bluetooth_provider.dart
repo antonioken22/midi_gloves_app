@@ -218,6 +218,8 @@ class BluetoothProvider with ChangeNotifier {
 
       // Simple sine wave for accel to simulate tilting
       final accelY = 10.0 * (0.5 + 0.5 * sin(now / 1000.0)); // 0 to 10
+      final accelX = 5.0 * sin(now / 1200.0); // -5 to 5
+      final accelZ = 9.8 + 2.0 * cos(now / 800.0); // Fluctuating around gravity
 
       _gloveData = GloveData(
         flex1: (50 + 50 * sin(now / 500.0)).toInt().abs() % 100,
@@ -225,9 +227,9 @@ class BluetoothProvider with ChangeNotifier {
         flex3: (50 + 50 * sin(now / 700.0)).toInt().abs() % 100,
         flex4: (50 + 50 * cos(now / 800.0)).toInt().abs() % 100,
         flex5: (50 + 50 * sin(now / 900.0)).toInt().abs() % 100,
-        accelX: 0,
+        accelX: accelX,
         accelY: accelY, // Varying Y for octave shift simulation
-        accelZ: 9.8,
+        accelZ: accelZ,
       );
       _processAudio(_gloveData);
       notifyListeners();
