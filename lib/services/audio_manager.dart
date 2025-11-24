@@ -42,7 +42,7 @@ class AudioManager {
 
   Future<void> _initializeDesktop() async {
     // Load SoundFont
-    ByteData byte = await rootBundle.load('assets/sound_fonts/piano_font.sf2');
+    ByteData byte = await rootBundle.load('assets/sounds/piano_font.sf2');
     final soundFont = SoundFont.fromByteData(byte);
     _synthesizer = Synthesizer.load(
       soundFont,
@@ -71,7 +71,7 @@ class AudioManager {
     // Load SoundFont using loadSoundfontAsset which handles temp file internally
     // We need to provide the full asset path
     await _midiPro.loadSoundfontAsset(
-      assetPath: 'assets/sound_fonts/piano_font.sf2',
+      assetPath: 'assets/sounds/piano_font.sf2',
     );
     print("Initialized Mobile Audio (MidiPro)");
   }
