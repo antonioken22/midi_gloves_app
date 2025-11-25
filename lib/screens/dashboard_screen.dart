@@ -89,9 +89,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // 0.7 -> 5, 2.0 -> 6, 3.0 -> 7, 4.0 -> 8
     int gloveOctave = 4;
 
-    if (gloveData.accelX <= -3.5)
+    if (gloveData.accelX <= -3.5) {
       gloveOctave = 0;
-    else if (gloveData.accelX <= -2.5)
+    } else if (gloveData.accelX <= -2.5)
       gloveOctave = 1;
     else if (gloveData.accelX <= -1.5)
       gloveOctave = 2;

@@ -99,8 +99,18 @@ class AudioManager {
   bool _sustainEnabled = false;
   final Set<int> _sustainedNotes = {};
 
+  // Soft release tracking
+  final Map<int, Timer> _activeNoteTimers = {};
+
   void playNote(int midiNote) {
     if (!_isInitialized) return;
+
+    // If there's a pending stop timer for this note, cancel it so we can re-trigger
+    if (_activeNoteTimers.containsKey(midiNote)) {
+      _activeNoteTimers[midiNote]?.cancel();
+      _activeNoteTimers.remove(midiNote);
+    }
+
     try {
       if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
         if (_synthesizer != null) {
@@ -123,43 +133,44 @@ class AudioManager {
       return;
     }
 
-    try {
-      if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-        if (_synthesizer != null) {
-          _synthesizer!.noteOff(channel: 0, key: midiNote);
+    // Normal release: 100ms (crisper)
+    _scheduleSoftRelease(midiNote, const Duration(milliseconds: 100));
+  }
+
+  void _scheduleSoftRelease(int midiNote, Duration duration) {
+    // Cancel any existing timer just in case
+    _activeNoteTimers[midiNote]?.cancel();
+
+    // Schedule the actual note off with the specified delay
+    _activeNoteTimers[midiNote] = Timer(duration, () {
+      _activeNoteTimers.remove(midiNote);
+      try {
+        if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+          if (_synthesizer != null) {
+            _synthesizer!.noteOff(channel: 0, key: midiNote);
+          }
+        } else {
+          _midiPro.stopNote(channel: 0, key: midiNote);
         }
-      } else {
-        _midiPro.stopNote(channel: 0, key: midiNote);
+      } catch (e) {
+        print("Error stopping note: $e");
       }
-    } catch (e) {
-      print("Error stopping note: $e");
-    }
+    });
   }
 
   void setSustain(bool enabled) {
     _sustainEnabled = enabled;
 
-    // If disabling sustain, stop all currently sustained notes
+    // If disabling sustain, release all currently sustained notes
     if (!enabled) {
       for (final note in _sustainedNotes) {
-        try {
-          if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-            if (_synthesizer != null) {
-              _synthesizer!.noteOff(channel: 0, key: note);
-            }
-          } else {
-            _midiPro.stopNote(channel: 0, key: note);
-          }
-        } catch (e) {
-          print("Error stopping sustained note: $e");
-        }
+        _scheduleSoftRelease(note, const Duration(milliseconds: 500));
       }
       _sustainedNotes.clear();
 
-      // Also call stopAllNotes on mobile to be safe against lingering sounds
-      if (Platform.isAndroid || Platform.isIOS) {
-        _midiPro.stopAllNotes();
-      }
+      // We don't call stopAllNotes here immediately because we want the soft release timers to run.
+      // However, if we really wanted to kill everything we could.
+      // But for "proper fade", we let the timers handle it.
     }
   }
 }

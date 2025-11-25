@@ -21,16 +21,32 @@ class SimulationPlaylist {
       List<int> fingers, {
       double ax = 0.0,
       double ay = 0.0,
-      int duration = 4,
+      int duration = 4, // Default 400ms (4 * 100ms)
     }) {
       // Note ON
-      for (int i = 0; i < duration; i++) addStep(fingers, ax, ay);
-      // Note OFF (Gap)
-      addStep([], ax, ay);
+      for (int i = 0; i < duration; i++) {
+        addStep(fingers, ax, ay);
+      }
+      // No automatic gap for Legato
     }
 
     void addRest(int duration, {double ax = 0.0, double ay = 0.0}) {
-      for (int i = 0; i < duration; i++) addStep([], ax, ay);
+      // Scale input duration by 5 to match previous logic if passed directly,
+      // OR just expect caller to pass scaled values.
+      // To be safe and consistent with "duration=4" meaning 400ms previously:
+      // Old: 4 ticks * 100ms = 400ms.
+      // New: 20 ticks * 20ms = 400ms.
+      // So we should multiply input by 5 if we want to keep the same numbers in the song definitions?
+      // No, let's just update the default and let the songs use the new scale.
+      // But wait, if I don't multiply, I have to update EVERY number in the songs.
+      // It's easier to multiply here?
+      // No, `duration` in `addNote` is used in a loop.
+      // Let's just update the default to 20.
+      // And for `addRest`, we simply loop.
+
+      for (int i = 0; i < duration; i++) {
+        addStep([], ax, ay);
+      }
     }
 
     // --- Song 2: Twinkle Twinkle Little Star (Complete) ---
@@ -78,8 +94,28 @@ class SimulationPlaylist {
     // Actually, I can use the "Build Up" to show off the range.
 
     // --- Song 1: Ode to Joy (Neutral) ---
-    final joy = [3, 3, 4, 5, 5, 4, 3, 2, 1, 1, 2, 3, 3, 2, 2];
-    for (var f in joy) addNote([f]);
+    // E E F G G F E D C C D E E D D
+    // Repeats: E-E, G-G, C-C, E-E, D-D
+    addNote([3]);
+    addRest(1);
+    addNote([3]); // E E
+    addNote([4]); // F
+    addNote([5]);
+    addRest(1);
+    addNote([5]); // G G
+    addNote([4]); // F
+    addNote([3]); // E
+    addNote([2]); // D
+    addNote([1]);
+    addRest(1);
+    addNote([1]); // C C
+    addNote([2]); // D
+    addNote([3]);
+    addRest(1);
+    addNote([3]); // E E
+    addNote([2]);
+    addRest(1);
+    addNote([2]); // D D
     addRest(8);
 
     // --- Song 2: Blinding Lights - The Weeknd ---
@@ -96,14 +132,19 @@ class SimulationPlaylist {
       // Sustain ON
       addNote([1, 4], ax: oct4X, ay: sustainY, duration: 4);
 
-      // 2. F (Short)
+      // 2. F (Short) - Same note F(4) repeated? No, previous was chord.
+      // But Finger 4 was active. To re-trigger F, we need a gap on Finger 4?
+      // Or just a gap in general.
+      addRest(1, ax: oct4X, ay: sustainY);
       addNote([4], ax: oct4X, ay: sustainY, duration: 2);
 
       // 3. Eb (D#) - Black Mode (Finger 2)
       // Sustain OFF (Tilt Down)
+      // Different note/finger -> Legato OK
       addNote([2], ax: oct4X, ay: blackModeY, duration: 2);
 
       // 4. F (Short) - Sustain ON
+      // Different note -> Legato OK
       addNote([4], ax: oct4X, ay: sustainY, duration: 2);
 
       // 5. G (Short)
@@ -123,6 +164,7 @@ class SimulationPlaylist {
     }
 
     playBlindingLights();
+    addRest(1); // Gap before repeat
     playBlindingLights(); // Repeat
     addRest(8);
 

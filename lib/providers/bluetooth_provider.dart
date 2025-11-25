@@ -259,9 +259,9 @@ class BluetoothProvider with ChangeNotifier {
     // 0.7 -> 5, 2.0 -> 6, 3.0 -> 7, 4.0 -> 8
     int octave = 4;
 
-    if (data.accelX <= -3.5)
+    if (data.accelX <= -3.5) {
       octave = 0;
-    else if (data.accelX <= -2.5)
+    } else if (data.accelX <= -2.5)
       octave = 1;
     else if (data.accelX <= -1.5)
       octave = 2;
