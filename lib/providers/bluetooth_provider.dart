@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/glove_data.dart';
+import '../models/simulation_playlist.dart';
 import '../services/audio_manager.dart';
 
 class BluetoothProvider with ChangeNotifier {
@@ -203,32 +204,37 @@ class BluetoothProvider with ChangeNotifier {
     }
   }
 
+  // Simulation State
+  List<SimStep> _simulationSequence = [];
+  int _sequenceIndex = 0;
+
   void startSimulation() {
     if (_isSimulating) return;
     _isSimulating = true;
+    _simulationSequence = SimulationPlaylist.buildSequence();
+    _sequenceIndex = 0;
     notifyListeners();
 
     _simulationTimer = Timer.periodic(const Duration(milliseconds: 100), (
       timer,
     ) {
-      // Simulate random flex values (0-100)
-      // and some accelerometer movement
-      // We'll make them fluctuate a bit to look "alive"
-      final now = DateTime.now().millisecondsSinceEpoch;
+      if (_simulationSequence.isEmpty) return;
 
-      // Simple sine wave for accel to simulate tilting
-      final accelY = 10.0 * (0.5 + 0.5 * sin(now / 1000.0)); // 0 to 10
-      final accelX = 5.0 * sin(now / 1200.0); // -5 to 5
-      final accelZ = 9.8 + 2.0 * cos(now / 800.0); // Fluctuating around gravity
+      final step = _simulationSequence[_sequenceIndex];
+      _sequenceIndex = (_sequenceIndex + 1) % _simulationSequence.length;
+
+      // Gentle breathing for Z to show life
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final accelZ = 0.9 + 0.05 * cos(now / 2000.0);
 
       _gloveData = GloveData(
-        flex1: (50 + 50 * sin(now / 500.0)).toInt().abs() % 100,
-        flex2: (50 + 50 * cos(now / 600.0)).toInt().abs() % 100,
-        flex3: (50 + 50 * sin(now / 700.0)).toInt().abs() % 100,
-        flex4: (50 + 50 * cos(now / 800.0)).toInt().abs() % 100,
-        flex5: (50 + 50 * sin(now / 900.0)).toInt().abs() % 100,
-        accelX: accelX,
-        accelY: accelY, // Varying Y for octave shift simulation
+        flex1: step.fingers.contains(1) ? 100 : 0,
+        flex2: step.fingers.contains(2) ? 100 : 0,
+        flex3: step.fingers.contains(3) ? 100 : 0,
+        flex4: step.fingers.contains(4) ? 100 : 0,
+        flex5: step.fingers.contains(5) ? 100 : 0,
+        accelX: step.accelX,
+        accelY: step.accelY,
         accelZ: accelZ,
       );
       _processAudio(_gloveData);
@@ -246,11 +252,28 @@ class BluetoothProvider with ChangeNotifier {
   }
 
   void _processAudio(GloveData data) {
-    // Determine Octave
+    // Determine Octave (using X axis tilt)
+    // Extended Simulation Mapping:
+    // -4.0 -> 0, -3.0 -> 1, -2.0 -> 2, -0.7 -> 3
+    // 0.0 -> 4
+    // 0.7 -> 5, 2.0 -> 6, 3.0 -> 7, 4.0 -> 8
     int octave = 4;
-    if (data.accelY < 3)
+
+    if (data.accelX <= -3.5)
+      octave = 0;
+    else if (data.accelX <= -2.5)
+      octave = 1;
+    else if (data.accelX <= -1.5)
+      octave = 2;
+    else if (data.accelX < -0.7)
       octave = 3;
-    else if (data.accelY > 7)
+    else if (data.accelX > 3.5)
+      octave = 8;
+    else if (data.accelX > 2.5)
+      octave = 7;
+    else if (data.accelX > 1.5)
+      octave = 6;
+    else if (data.accelX > 0.7)
       octave = 5;
 
     final baseNote = 12 * (octave + 1); // MIDI C is 12 * (octave + 1) usually

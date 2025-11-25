@@ -50,7 +50,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Threshold > 50 means pressed
     final List<int> gloveActiveKeys = [];
 
-    if (_blackKeysMode) {
+    // Determine effective modes (Manual Toggle OR Gesture)
+    // Arduino: Up (-Y) -> Sustain. Down (+Y) -> Black Mode.
+    final bool isGloveConnected =
+        btProvider.connectedDevice != null || btProvider.isSimulating;
+    final bool gestureSustain = isGloveConnected && gloveData.accelY < -0.7;
+    final bool gestureBlack = isGloveConnected && gloveData.accelY > 0.7;
+
+    final bool effectiveSustain = _sustainEnabled || gestureSustain;
+    final bool effectiveBlackMode = _blackKeysMode || gestureBlack;
+
+    // Sync Audio Manager
+    AudioManager().setSustain(effectiveSustain);
+
+    if (effectiveBlackMode) {
       // In black keys mode, map to black keys (C#, D#, F#, G#, A#)
       if (gloveData.flex1 > 50) gloveActiveKeys.add(1); // C#
       if (gloveData.flex2 > 50) gloveActiveKeys.add(3); // D#
@@ -69,12 +82,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Combine glove keys with manually pressed keys for visual feedback
     final activeKeys = [...gloveActiveKeys, ..._manuallyPressedKeys];
 
-    // Map Accel Y to Octave (for glove mode)
-    // 0-10 range from simulation. Let's map 0-3 -> Octave 3, 3-7 -> Octave 4, 7-10 -> Octave 5
+    // Map Accel X to Octave (for glove mode)
+    // Extended Simulation Mapping:
+    // -4.0 -> 0, -3.0 -> 1, -2.0 -> 2, -0.7 -> 3
+    // 0.0 -> 4
+    // 0.7 -> 5, 2.0 -> 6, 3.0 -> 7, 4.0 -> 8
     int gloveOctave = 4;
-    if (gloveData.accelY < 3)
+
+    if (gloveData.accelX <= -3.5)
+      gloveOctave = 0;
+    else if (gloveData.accelX <= -2.5)
+      gloveOctave = 1;
+    else if (gloveData.accelX <= -1.5)
+      gloveOctave = 2;
+    else if (gloveData.accelX < -0.7)
       gloveOctave = 3;
-    else if (gloveData.accelY > 7)
+    else if (gloveData.accelX > 3.5)
+      gloveOctave = 8;
+    else if (gloveData.accelX > 2.5)
+      gloveOctave = 7;
+    else if (gloveData.accelX > 1.5)
+      gloveOctave = 6;
+    else if (gloveData.accelX > 0.7)
       gloveOctave = 5;
 
     // Use glove octave if connected/simulating, otherwise use manual octave
@@ -146,10 +175,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 // Sustain Toggle (Always visible)
                                 IconButton(
                                   icon: Icon(
-                                    _sustainEnabled
+                                    effectiveSustain
                                         ? Icons.my_library_music
                                         : Icons.library_music_outlined,
-                                    color: _sustainEnabled
+                                    color: effectiveSustain
                                         ? Colors.green
                                         : null,
                                   ),
@@ -199,15 +228,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 // Key Filter Toggle (Always visible)
                                 IconButton(
                                   icon: Icon(
-                                    _blackKeysMode
+                                    effectiveBlackMode
                                         ? Icons.piano_outlined
                                         : Icons.piano,
-                                    color: _blackKeysMode
+                                    color: effectiveBlackMode
                                         ? Theme.of(context).colorScheme.primary
                                         : null,
                                   ),
                                   onPressed: _toggleKeyFilter,
-                                  tooltip: _blackKeysMode
+                                  tooltip: effectiveBlackMode
                                       ? 'Black Keys Mode'
                                       : 'White Keys Mode',
                                 ),
@@ -306,10 +335,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 // Sustain Toggle
                                 IconButton(
                                   icon: Icon(
-                                    _sustainEnabled
+                                    effectiveSustain
                                         ? Icons.my_library_music
                                         : Icons.library_music_outlined,
-                                    color: _sustainEnabled
+                                    color: effectiveSustain
                                         ? Colors.green
                                         : null,
                                   ),
@@ -359,15 +388,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 // Key Filter Toggle
                                 IconButton(
                                   icon: Icon(
-                                    _blackKeysMode
+                                    effectiveBlackMode
                                         ? Icons.piano_outlined
                                         : Icons.piano,
-                                    color: _blackKeysMode
+                                    color: effectiveBlackMode
                                         ? Theme.of(context).colorScheme.primary
                                         : null,
                                   ),
                                   onPressed: _toggleKeyFilter,
-                                  tooltip: _blackKeysMode
+                                  tooltip: effectiveBlackMode
                                       ? 'Black Keys Mode'
                                       : 'White Keys Mode',
                                 ),
@@ -446,7 +475,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
-            widthFactor: ((value + 10) / 20).clamp(0.0, 1.0),
+            widthFactor: ((value + 1) / 2).clamp(0.0, 1.0),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.orange, // Match Portrait
@@ -585,9 +614,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _compactAccel(String label, double value) {
-    // Normalize accel value for display (assuming range -10 to 10 roughly)
-    // We'll map -10..10 to 0..1 for the bar
-    final normalized = ((value + 10) / 20).clamp(0.0, 1.0);
+    // Normalize accel value for display (assuming range -1 to 1 roughly)
+    // We'll map -1..1 to 0..1 for the bar
+    final normalized = ((value + 1) / 2).clamp(0.0, 1.0);
 
     return Column(
       children: [
