@@ -3,23 +3,29 @@ import 'package:provider/provider.dart';
 import 'providers/bluetooth_provider.dart';
 import 'providers/loading_provider.dart';
 import 'providers/settings_provider.dart';
+import 'services/ml_service.dart';
 import 'screens/connection_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/settings_screen.dart';
 import 'widgets/loading_overlay.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => MLService()),
         ChangeNotifierProxyProvider<SettingsProvider, BluetoothProvider>(
-          create: (context) =>
-              BluetoothProvider(context.read<SettingsProvider>()),
+          create: (context) => BluetoothProvider(
+            context.read<SettingsProvider>(),
+            context.read<MLService>(),
+          ),
           update: (context, settings, previous) =>
               previous!..updateSettings(settings),
         ),
-        ChangeNotifierProvider(create: (context) => LoadingProvider()),
+        ChangeNotifierProvider(create: (_) => LoadingProvider()),
       ],
       child: const MyApp(),
     ),

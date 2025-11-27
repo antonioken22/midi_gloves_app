@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/glove_data.dart';
 import '../models/simulation_playlist.dart';
 import '../services/audio_manager.dart';
+import '../services/ml_service.dart';
 import 'settings_provider.dart';
 
 class BluetoothProvider with ChangeNotifier {
@@ -38,8 +39,9 @@ class BluetoothProvider with ChangeNotifier {
   final Set<int> _activeNotes = {};
 
   SettingsProvider _settings;
+  final MLService _mlService;
 
-  BluetoothProvider(this._settings) {
+  BluetoothProvider(this._settings, this._mlService) {
     _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
       _adapterState = state;
       if (state == BluetoothAdapterState.on) {
@@ -261,15 +263,98 @@ class BluetoothProvider with ChangeNotifier {
   }
 
   void _processAudio(GloveData data) {
+    if (_settings.isMLMode) {
+      // ML Mode: Use k-NN prediction
+      final features = [
+        data.flex1.toDouble(),
+        data.flex2.toDouble(),
+        data.flex3.toDouble(),
+        data.flex4.toDouble(),
+        data.flex5.toDouble(),
+        data.accelX,
+        data.accelY,
+        data.accelZ,
+      ];
+
+      final predictedLabel = _mlService.predict(features, k: 1);
+
+      // Map label to note
+      // Simple mapping for now: Label -> Note Index relative to C4 (60)
+      // C=0, D=2, E=4, F=5, G=7, A=9, B=11
+      int? noteIndex;
+      switch (predictedLabel) {
+        case "C":
+          noteIndex = 0;
+          break;
+        case "D":
+          noteIndex = 2;
+          break;
+        case "E":
+          noteIndex = 4;
+          break;
+        case "F":
+          noteIndex = 5;
+          break;
+        case "G":
+          noteIndex = 7;
+          break;
+        case "A":
+          noteIndex = 9;
+          break;
+        case "B":
+          noteIndex = 11;
+          break;
+        default:
+          noteIndex = null; // No Note
+      }
+
+      // Determine Octave (still use Accel X for now, or could be part of ML)
+      // For simplicity, let's keep the tilt-based octave for now to allow range.
+      // Apply IMU Calibration Offsets
+      final offsets = _settings.accelOffsets;
+      final effectiveX = data.accelX - offsets[0];
+
+      int octave = 4;
+      if (effectiveX <= -3.5)
+        octave = 0;
+      else if (effectiveX <= -2.5)
+        octave = 1;
+      else if (effectiveX <= -1.5)
+        octave = 2;
+      else if (effectiveX < -0.7)
+        octave = 3;
+      else if (effectiveX > 3.5)
+        octave = 8;
+      else if (effectiveX > 2.5)
+        octave = 7;
+      else if (effectiveX > 1.5)
+        octave = 6;
+      else if (effectiveX > 0.7)
+        octave = 5;
+
+      final baseNote = 12 * (octave + 1);
+
+      // Stop all other notes if they are not the predicted one
+      // This is a monophonic implementation for ML (one gesture = one note)
+      // To do polyphonic, we'd need multi-label classification or multiple classifiers.
+      for (var note in List<int>.from(_activeNotes)) {
+        if (noteIndex == null || note != baseNote + noteIndex) {
+          _handleNote(false, note);
+        }
+      }
+
+      if (noteIndex != null) {
+        _handleNote(true, baseNote + noteIndex);
+      }
+
+      return; // Skip legacy logic
+    }
+
+    // Legacy Threshold Logic
     // Apply IMU Calibration Offsets
     final offsets = _settings.accelOffsets;
     final effectiveX = data.accelX - offsets[0];
-    // We might not want to offset Y/Z for all logic, but for consistency let's do it.
-    // However, for Octave (X-axis tilt), X offset is most critical.
-    // final effectiveY = data.accelY - offsets[1];
-    // final effectiveZ = data.accelZ - offsets[2];
-
-    // Determine Octave (using X axis tilt)
+    // ... rest of existing logic
     // Extended Simulation Mapping:
     // -4.0 -> 0, -3.0 -> 1, -2.0 -> 2, -0.7 -> 3
     // 0.0 -> 4

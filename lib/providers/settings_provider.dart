@@ -4,9 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsProvider with ChangeNotifier {
   List<int> _sensorThresholds = [50, 50, 50, 50, 50];
   bool _hapticFeedbackEnabled = false;
+  bool _isMLMode = false;
 
   List<int> get sensorThresholds => _sensorThresholds;
   bool get hapticFeedbackEnabled => _hapticFeedbackEnabled;
+  bool get isMLMode => _isMLMode;
 
   SettingsProvider() {
     _loadSettings();
@@ -22,6 +24,7 @@ class SettingsProvider with ChangeNotifier {
       _sensorThresholds = thresholds.map((e) => int.parse(e)).toList();
     }
     _hapticFeedbackEnabled = prefs.getBool('hapticFeedbackEnabled') ?? false;
+    _isMLMode = prefs.getBool('isMLMode') ?? false;
 
     final offsets = prefs.getStringList('accelOffsets');
     if (offsets != null && offsets.length == 3) {
@@ -50,6 +53,12 @@ class SettingsProvider with ChangeNotifier {
     _saveSettings();
   }
 
+  Future<void> setMLMode(bool enabled) async {
+    _isMLMode = enabled;
+    notifyListeners();
+    _saveSettings();
+  }
+
   Future<void> setAccelOffsets(double x, double y, double z) async {
     _accelOffsets = [x, y, z];
     notifyListeners();
@@ -67,5 +76,6 @@ class SettingsProvider with ChangeNotifier {
       'accelOffsets',
       _accelOffsets.map((e) => e.toString()).toList(),
     );
+    await prefs.setBool('isMLMode', _isMLMode);
   }
 }

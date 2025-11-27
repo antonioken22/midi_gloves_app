@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
 import 'calibration_screen.dart';
+import 'training_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -12,6 +13,38 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          // Machine Learning Settings
+          _SettingsGroup(
+            title: 'Machine Learning',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.model_training),
+                title: const Text('Gesture Training'),
+                subtitle: const Text('Record custom gestures for notes'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TrainingScreen(),
+                    ),
+                  );
+                },
+              ),
+              Consumer<SettingsProvider>(
+                builder: (context, settings, child) {
+                  return SwitchListTile(
+                    secondary: const Icon(Icons.psychology),
+                    title: const Text('Smart Gesture Mode (ML)'),
+                    subtitle: const Text('Use trained model for recognition'),
+                    value: settings.isMLMode,
+                    onChanged: (bool value) {
+                      settings.setMLMode(value);
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
           // Sensor-related settings.
           _SettingsGroup(
             title: 'Sensor Settings',
