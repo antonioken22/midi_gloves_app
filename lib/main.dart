@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/bluetooth_provider.dart';
 import 'providers/loading_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/connection_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/settings_screen.dart';
@@ -11,7 +12,13 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => BluetoothProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProxyProvider<SettingsProvider, BluetoothProvider>(
+          create: (context) =>
+              BluetoothProvider(context.read<SettingsProvider>()),
+          update: (context, settings, previous) =>
+              previous!..updateSettings(settings),
+        ),
         ChangeNotifierProvider(create: (context) => LoadingProvider()),
       ],
       child: const MyApp(),

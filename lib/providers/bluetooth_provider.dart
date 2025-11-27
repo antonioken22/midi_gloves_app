@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/glove_data.dart';
 import '../models/simulation_playlist.dart';
 import '../services/audio_manager.dart';
+import 'settings_provider.dart';
 
 class BluetoothProvider with ChangeNotifier {
   BluetoothDevice? _connectedDevice;
@@ -35,7 +37,9 @@ class BluetoothProvider with ChangeNotifier {
   // Track active notes to stop them
   final Set<int> _activeNotes = {};
 
-  BluetoothProvider() {
+  SettingsProvider _settings;
+
+  BluetoothProvider(this._settings) {
     _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
       _adapterState = state;
       if (state == BluetoothAdapterState.on) {
@@ -49,6 +53,11 @@ class BluetoothProvider with ChangeNotifier {
 
     // Initialize Audio
     AudioManager().initialize();
+  }
+
+  void updateSettings(SettingsProvider settings) {
+    _settings = settings;
+    notifyListeners();
   }
 
   Future<void> _requestPermissions() async {
@@ -252,6 +261,14 @@ class BluetoothProvider with ChangeNotifier {
   }
 
   void _processAudio(GloveData data) {
+    // Apply IMU Calibration Offsets
+    final offsets = _settings.accelOffsets;
+    final effectiveX = data.accelX - offsets[0];
+    // We might not want to offset Y/Z for all logic, but for consistency let's do it.
+    // However, for Octave (X-axis tilt), X offset is most critical.
+    // final effectiveY = data.accelY - offsets[1];
+    // final effectiveZ = data.accelZ - offsets[2];
+
     // Determine Octave (using X axis tilt)
     // Extended Simulation Mapping:
     // -4.0 -> 0, -3.0 -> 1, -2.0 -> 2, -0.7 -> 3
@@ -259,31 +276,33 @@ class BluetoothProvider with ChangeNotifier {
     // 0.7 -> 5, 2.0 -> 6, 3.0 -> 7, 4.0 -> 8
     int octave = 4;
 
-    if (data.accelX <= -3.5) {
+    if (effectiveX <= -3.5) {
       octave = 0;
-    } else if (data.accelX <= -2.5)
+    } else if (effectiveX <= -2.5)
       octave = 1;
-    else if (data.accelX <= -1.5)
+    else if (effectiveX <= -1.5)
       octave = 2;
-    else if (data.accelX < -0.7)
+    else if (effectiveX < -0.7)
       octave = 3;
-    else if (data.accelX > 3.5)
+    else if (effectiveX > 3.5)
       octave = 8;
-    else if (data.accelX > 2.5)
+    else if (effectiveX > 2.5)
       octave = 7;
-    else if (data.accelX > 1.5)
+    else if (effectiveX > 1.5)
       octave = 6;
-    else if (data.accelX > 0.7)
+    else if (effectiveX > 0.7)
       octave = 5;
 
     final baseNote = 12 * (octave + 1); // MIDI C is 12 * (octave + 1) usually
 
     // Map fingers to notes (C, D, E, F, G)
-    _handleNote(data.flex1 > 50, baseNote + 0); // C
-    _handleNote(data.flex2 > 50, baseNote + 2); // D
-    _handleNote(data.flex3 > 50, baseNote + 4); // E
-    _handleNote(data.flex4 > 50, baseNote + 5); // F
-    _handleNote(data.flex5 > 50, baseNote + 7); // G
+    // Use thresholds from SettingsProvider
+    final thresholds = _settings.sensorThresholds;
+    _handleNote(data.flex1 > thresholds[0], baseNote + 0); // C
+    _handleNote(data.flex2 > thresholds[1], baseNote + 2); // D
+    _handleNote(data.flex3 > thresholds[2], baseNote + 4); // E
+    _handleNote(data.flex4 > thresholds[3], baseNote + 5); // F
+    _handleNote(data.flex5 > thresholds[4], baseNote + 7); // G
   }
 
   void _handleNote(bool isPressed, int note) {
@@ -291,6 +310,9 @@ class BluetoothProvider with ChangeNotifier {
       if (!_activeNotes.contains(note)) {
         AudioManager().playNote(note);
         _activeNotes.add(note);
+        if (_settings.hapticFeedbackEnabled) {
+          HapticFeedback.lightImpact();
+        }
       }
     } else {
       if (_activeNotes.contains(note)) {

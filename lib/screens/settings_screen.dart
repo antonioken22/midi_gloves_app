@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/settings_provider.dart';
+import 'calibration_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -9,28 +12,6 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          // MIDI configurations.
-          _SettingsGroup(
-            title: 'MIDI Configuration',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.music_note),
-                title: const Text('Gesture to MIDI Mapping'),
-                subtitle: const Text('Assign gestures to specific notes'),
-                onTap: () {
-                  // TODO: Navigate to a detailed mapping screen.
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.graphic_eq),
-                title: const Text('Control Change Mapping'),
-                subtitle: const Text('Map accelerometer data to effects'),
-                onTap: () {
-                  // TODO: Navigate to CC mapping screen.
-                },
-              ),
-            ],
-          ),
           // Sensor-related settings.
           _SettingsGroup(
             title: 'Sensor Settings',
@@ -40,16 +21,25 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('Sensor Thresholds'),
                 subtitle: const Text('Calibrate gesture activation points'),
                 onTap: () {
-                  // TODO: Navigate to a calibration screen.
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CalibrationScreen(),
+                    ),
+                  );
                 },
               ),
-              SwitchListTile(
-                secondary: const Icon(Icons.vibration),
-                title: const Text('Haptic Feedback'),
-                subtitle: const Text('Vibrate on gesture recognition'),
-                value: false,
-                onChanged: (bool value) {
-                  // TODO: Save this setting.
+              Consumer<SettingsProvider>(
+                builder: (context, settings, child) {
+                  return SwitchListTile(
+                    secondary: const Icon(Icons.vibration),
+                    title: const Text('Haptic Feedback'),
+                    subtitle: const Text('Vibrate on gesture recognition'),
+                    value: settings.hapticFeedbackEnabled,
+                    onChanged: (bool value) {
+                      settings.setHapticFeedback(value);
+                    },
+                  );
                 },
               ),
             ],
@@ -63,7 +53,27 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text('About this App'),
                 subtitle: const Text('Version 1.0.0'),
                 onTap: () {
-                  // TODO: Show an about dialog.
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'MIDI Gloves',
+                    applicationVersion: '1.0.0',
+                    applicationLegalese:
+                        'Developed by Tres Juans\nAll Rights Reserved 2025',
+                    children: [
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Research Integration:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'We are exploring the integration of On-Device Machine Learning to create an Adaptive Gesture-to-MIDI Interface. '
+                        'By training a model on raw sensor data (Flex + IMU), the glove could learn personalized gesture mappings, '
+                        'enabling more expressive and nuanced instrument control beyond simple threshold-based triggering. '
+                        'This advancement aims to contribute to our research on accessible and adaptive musical interfaces.',
+                      ),
+                    ],
+                  );
                 },
               ),
             ],

@@ -512,7 +512,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Distribute space
           children: [
-            Text("Flex Sensors (ZD10-100)", style: style),
+            Text("Flex Sensors (2.2\" Resistive)", style: style),
             if (isCompact) ...[
               Text("T: ${gloveData.flex1}"),
               Text("I: ${gloveData.flex2}"),
