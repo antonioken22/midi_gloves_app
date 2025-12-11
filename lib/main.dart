@@ -54,33 +54,39 @@ class _MyAppState extends State<MyApp> {
       title: 'MIDI Gloves',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
       home: LoadingOverlay(
-        child: Scaffold(
-          body: IndexedStack(index: _selectedIndex, children: _pages),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (int index) {
-              setState(() {
-                _selectedIndex = index;
-              });
-            },
-            destinations: const <NavigationDestination>[
-              NavigationDestination(
-                icon: Icon(Icons.bluetooth),
-                selectedIcon: Icon(Icons.bluetooth_connected),
-                label: 'Connection',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: 'Dashboard',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.settings_outlined),
-                selectedIcon: Icon(Icons.settings),
-                label: 'Settings',
-              ),
-            ],
-          ),
+        child: OrientationBuilder(
+          builder: (context, orientation) {
+            return Scaffold(
+              body: IndexedStack(index: _selectedIndex, children: _pages),
+              bottomNavigationBar: orientation == Orientation.landscape
+                  ? null
+                  : NavigationBar(
+                      selectedIndex: _selectedIndex,
+                      onDestinationSelected: (int index) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      },
+                      destinations: const <NavigationDestination>[
+                        NavigationDestination(
+                          icon: Icon(Icons.bluetooth),
+                          selectedIcon: Icon(Icons.bluetooth_connected),
+                          label: 'Connection',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.dashboard_outlined),
+                          selectedIcon: Icon(Icons.dashboard),
+                          label: 'Dashboard',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.settings_outlined),
+                          selectedIcon: Icon(Icons.settings),
+                          label: 'Settings',
+                        ),
+                      ],
+                    ),
+            );
+          },
         ),
       ),
     );

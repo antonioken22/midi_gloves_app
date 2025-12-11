@@ -21,45 +21,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
     final gloveData = btProvider.gloveData;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gesture Training'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_forever),
-            tooltip: 'Clear All Data',
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Clear Training Data?'),
-                  content: const Text(
-                    'This will delete all recorded gesture samples. This action cannot be undone.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (confirm == true) {
-                await mlService.clearData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('All training data cleared')),
-                  );
-                }
-              }
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Gesture Training'), actions: []),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -79,7 +41,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
             // Label Selector
             DropdownButtonFormField<String>(
-              value: _selectedLabel,
+              initialValue: _selectedLabel,
               decoration: const InputDecoration(
                 labelText: 'Target Note/Label',
                 border: OutlineInputBorder(),
@@ -190,9 +152,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Training Data Stats:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: const Text(
+                      'Training Data Stats:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
                   ),
                   const Divider(),
                   Expanded(
@@ -204,7 +172,56 @@ class _TrainingScreenState extends State<TrainingScreen> {
                         if (count == 0) return const SizedBox.shrink();
                         return ListTile(
                           title: Text('Label: $label'),
-                          trailing: Text('$count samples'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('$count samples'),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: Text('Clear $label Data?'),
+                                      content: Text(
+                                        'This will delete all $count samples for $label. This action cannot be undone.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    await mlService.clearDataForLabel(label);
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Cleared data for $label',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                           dense: true,
                         );
                       }).toList(),

@@ -315,9 +315,9 @@ class BluetoothProvider with ChangeNotifier {
       final effectiveX = data.accelX - offsets[0];
 
       int octave = 4;
-      if (effectiveX <= -3.5)
+      if (effectiveX <= -3.5) {
         octave = 0;
-      else if (effectiveX <= -2.5)
+      } else if (effectiveX <= -2.5)
         octave = 1;
       else if (effectiveX <= -1.5)
         octave = 2;

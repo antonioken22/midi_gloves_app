@@ -43,6 +43,12 @@ class MLService with ChangeNotifier {
     await _saveSamples();
   }
 
+  Future<void> clearDataForLabel(String label) async {
+    _samples.removeWhere((s) => s.noteLabel == label);
+    notifyListeners();
+    await _saveSamples();
+  }
+
   Future<void> _saveSamples() async {
     final prefs = await SharedPreferences.getInstance();
     final String encoded = jsonEncode(_samples.map((e) => e.toJson()).toList());
