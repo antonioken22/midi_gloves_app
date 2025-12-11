@@ -3,15 +3,8 @@ import '../../models/glove_data.dart';
 
 class CompactStatusBar extends StatelessWidget {
   final GloveData gloveData;
-  final bool isSimulating;
-  final VoidCallback onToggleSimulation;
 
-  const CompactStatusBar({
-    super.key,
-    required this.gloveData,
-    required this.isSimulating,
-    required this.onToggleSimulation,
-  });
+  const CompactStatusBar({super.key, required this.gloveData});
 
   @override
   Widget build(BuildContext context) {
@@ -39,19 +32,6 @@ class CompactStatusBar extends StatelessWidget {
           _miniAccelChip("Acc Y", gloveData.accelY),
           const SizedBox(width: 20),
           _miniAccelChip("Acc Z", gloveData.accelZ),
-          const SizedBox(width: 20),
-          const VerticalDivider(indent: 6, endIndent: 6),
-          // Simulate Button (Landscape) - Icon Only
-          IconButton(
-            onPressed: onToggleSimulation,
-            icon: Icon(isSimulating ? Icons.stop : Icons.play_arrow),
-            tooltip: isSimulating ? "Stop Simulation" : "Start Simulation",
-            style: IconButton.styleFrom(
-              padding: const EdgeInsets.all(4),
-              minimumSize: const Size(32, 32),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
         ],
       ),
     );

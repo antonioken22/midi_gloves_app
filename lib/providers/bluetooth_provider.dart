@@ -263,9 +263,14 @@ class BluetoothProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // ML State
+  final List<List<double>> _predictionBuffer = [];
+  int _predictionFrameCounter = 0;
+
   void _processAudio(GloveData data) {
     if (_settings.isMLMode) {
-      // ML Mode: Use k-NN prediction
+      // ML Mode: Use Dynamic Time Warping (DTW) prediction
+
       final features = [
         data.flex1.toDouble(),
         data.flex2.toDouble(),
@@ -277,7 +282,18 @@ class BluetoothProvider with ChangeNotifier {
         data.accelZ,
       ];
 
-      final predictedLabel = _mlService.predict(features, k: 1);
+      // Update sliding buffer
+      _predictionBuffer.add(features);
+      if (_predictionBuffer.length > MLService.kWindowSize) {
+        _predictionBuffer.removeAt(0);
+      }
+
+      _predictionFrameCounter++;
+
+      // Run prediction every 5 frames (~100ms) to save CPU
+      if (_predictionFrameCounter % 5 != 0) return;
+
+      final predictedLabel = _mlService.predictSequence(_predictionBuffer);
 
       // Map label to note
       // Simple mapping for now: Label -> Note Index relative to C4 (60)

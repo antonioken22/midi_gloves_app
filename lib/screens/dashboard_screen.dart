@@ -206,13 +206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: IntrinsicHeight(
                             child: Row(
                               children: [
-                                CompactStatusBar(
-                                  gloveData: gloveData,
-                                  isSimulating: btProvider.isSimulating,
-                                  onToggleSimulation: () => context
-                                      .read<BluetoothProvider>()
-                                      .toggleSimulation(),
-                                ),
+                                CompactStatusBar(gloveData: gloveData),
                                 const VerticalDivider(
                                   indent: 8,
                                   endIndent: 8,
@@ -231,6 +225,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   onOctaveUp: isManualMode && _manualOctave < 8
                                       ? () => setState(() => _manualOctave++)
                                       : null,
+                                ),
+                                const VerticalDivider(
+                                  indent: 8,
+                                  endIndent: 8,
+                                  width: 1,
+                                ),
+                                // Simulate Button (Moved Here)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                  ),
+                                  child: IconButton(
+                                    onPressed: () => context
+                                        .read<BluetoothProvider>()
+                                        .toggleSimulation(),
+                                    icon: Icon(
+                                      btProvider.isSimulating
+                                          ? Icons.stop
+                                          : Icons.play_arrow,
+                                    ),
+                                    tooltip: btProvider.isSimulating
+                                        ? "Stop Simulation"
+                                        : "Start Simulation",
+                                    style: IconButton.styleFrom(
+                                      padding: const EdgeInsets.all(4),
+                                      minimumSize: const Size(32, 32),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
