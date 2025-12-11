@@ -3,8 +3,8 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:midi_gloves_app/providers/loading_provider.dart';
 import 'package:provider/provider.dart';
 import '../providers/bluetooth_provider.dart';
-import '../widgets/bluetooth_off_screen.dart';
-import '../widgets/scan_result_tile.dart';
+import '../widgets/bluetooth/bluetooth_off_screen.dart';
+import '../widgets/bluetooth/scan_result_tile.dart';
 
 class ConnectionScreen extends StatelessWidget {
   const ConnectionScreen({super.key});
@@ -59,30 +59,32 @@ class ConnectionScreen extends StatelessWidget {
     BluetoothProvider provider,
     BluetoothProvider reader,
   ) {
-    return Column(
-      children: [
-        // List of Bonded (Paired) Devices
-        _buildSectionTitle(context, 'Paired Devices'),
-        _buildBondedDevicesList(context, provider, reader),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // List of Bonded (Paired) Devices
+          _buildSectionTitle(context, 'Paired Devices'),
+          _buildBondedDevicesList(context, provider, reader),
 
-        const Divider(height: 1),
+          const Divider(height: 1),
 
-        // List of Scanned (Available) Devices
-        _buildSectionTitle(context, 'Available Devices'),
-        if (provider.isScanning)
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Text('Scanning for 10 seconds...'),
-              ],
+          // List of Scanned (Available) Devices
+          _buildSectionTitle(context, 'Available Devices'),
+          if (provider.isScanning)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 16),
+                  Text('Scanning for 10 seconds...'),
+                ],
+              ),
             ),
-          ),
-        _buildScanResultsList(context, provider, reader),
-      ],
+          _buildScanResultsList(context, provider, reader),
+        ],
+      ),
     );
   }
 
@@ -148,28 +150,31 @@ class ConnectionScreen extends StatelessWidget {
     final loadingProvider = context.read<LoadingProvider>();
 
     return provider.scanResults.isEmpty && !provider.isScanning
-        ? const Center(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                'No new devices found.\nTap the search icon to scan.',
-                textAlign: TextAlign.center,
+        ? const SizedBox(
+            height: 100,
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'No new devices found.\nTap the search icon to scan.',
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           )
-        : Expanded(
-            child: ListView.builder(
-              itemCount: provider.scanResults.length,
-              itemBuilder: (context, index) {
-                final result = provider.scanResults[index];
-                return ScanResultTile(
-                  result: result,
-                  onTap: () => loadingProvider.runTask(
-                    () => reader.connect(result.device),
-                  ),
-                );
-              },
-            ),
+        : ListView.builder(
+            itemCount: provider.scanResults.length,
+            itemBuilder: (context, index) {
+              final result = provider.scanResults[index];
+              return ScanResultTile(
+                result: result,
+                onTap: () => loadingProvider.runTask(
+                  () => reader.connect(result.device),
+                ),
+              );
+            },
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
           );
   }
 
@@ -184,19 +189,25 @@ class ConnectionScreen extends StatelessWidget {
         : 'Unknown Device';
 
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.bluetooth_connected, size: 80, color: Colors.blue),
-          const SizedBox(height: 20),
-          Text('Connected to:', style: Theme.of(context).textTheme.titleMedium),
-          Text(deviceName, style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => loadingProvider.runTask(() => reader.disconnect()),
-            child: const Text('Disconnect'),
-          ),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.bluetooth_connected, size: 80, color: Colors.blue),
+            const SizedBox(height: 20),
+            Text(
+              'Connected to:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(deviceName, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () =>
+                  loadingProvider.runTask(() => reader.disconnect()),
+              child: const Text('Disconnect'),
+            ),
+          ],
+        ),
       ),
     );
   }

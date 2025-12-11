@@ -6,8 +6,9 @@ import 'providers/settings_provider.dart';
 import 'services/ml_service.dart';
 import 'screens/connection_screen.dart';
 import 'screens/dashboard_screen.dart';
+
 import 'screens/settings_screen.dart';
-import 'widgets/loading_overlay.dart';
+import 'widgets/common/loading_overlay.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,13 +55,23 @@ class _MyAppState extends State<MyApp> {
       title: 'MIDI Gloves',
       theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
       home: LoadingOverlay(
-        child: OrientationBuilder(
-          builder: (context, orientation) {
-            return Scaffold(
-              body: IndexedStack(index: _selectedIndex, children: _pages),
-              bottomNavigationBar: orientation == Orientation.landscape
-                  ? null
-                  : NavigationBar(
+        child: Scaffold(
+          body: IndexedStack(index: _selectedIndex, children: _pages),
+          bottomNavigationBar: SafeArea(
+            child: MediaQuery.of(context).orientation == Orientation.landscape
+                ? NavigationBarTheme(
+                    data: NavigationBarThemeData(
+                      height: 50,
+                      labelBehavior:
+                          NavigationDestinationLabelBehavior.alwaysHide,
+                      iconTheme: WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return const IconThemeData(size: 20);
+                        }
+                        return const IconThemeData(size: 20);
+                      }),
+                    ),
+                    child: NavigationBar(
                       selectedIndex: _selectedIndex,
                       onDestinationSelected: (int index) {
                         setState(() {
@@ -85,8 +96,33 @@ class _MyAppState extends State<MyApp> {
                         ),
                       ],
                     ),
-            );
-          },
+                  )
+                : NavigationBar(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: (int index) {
+                      setState(() {
+                        _selectedIndex = index;
+                      });
+                    },
+                    destinations: const <NavigationDestination>[
+                      NavigationDestination(
+                        icon: Icon(Icons.bluetooth),
+                        selectedIcon: Icon(Icons.bluetooth_connected),
+                        label: 'Connection',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.dashboard_outlined),
+                        selectedIcon: Icon(Icons.dashboard),
+                        label: 'Dashboard',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.settings_outlined),
+                        selectedIcon: Icon(Icons.settings),
+                        label: 'Settings',
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -234,9 +234,10 @@ class BluetoothProvider with ChangeNotifier {
       final step = _simulationSequence[_sequenceIndex];
       _sequenceIndex = (_sequenceIndex + 1) % _simulationSequence.length;
 
-      // Gentle breathing for Z to show life
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final accelZ = 0.9 + 0.05 * cos(now / 2000.0);
+      // Gentle breathing for Z to show life - DISABLED per request
+      // final now = DateTime.now().millisecondsSinceEpoch;
+      // final accelZ = 0.9 + 0.05 * cos(now / 2000.0);
+      const accelZ = 0.0;
 
       _gloveData = GloveData(
         flex1: step.fingers.contains(1) ? 100 : 0,

@@ -22,10 +22,8 @@ class GloveData {
 
       // Helper to safely get int from list
       int getFlex(int index) {
-        if (flexList.length > index) {
-          final val = flexList[index];
-          if (val is int) return val;
-          if (val is double) return val.toInt();
+        if (flexList.length > index && flexList[index] is int) {
+          return flexList[index] == 1 ? 100 : 0;
         }
         return 0;
       }

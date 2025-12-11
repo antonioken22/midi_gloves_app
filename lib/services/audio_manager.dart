@@ -11,19 +11,21 @@ class AudioManager {
   factory AudioManager() => _instance;
   AudioManager._internal();
 
-  // Linux/Desktop (Pure Dart)
+  // --- DESKTOP VARIABLES (Linux/Windows/Mac) ---
   Synthesizer? _synthesizer;
   AudioStream? _audioStream;
 
-  // Android/iOS (Native)
+  // --- MOBILE VARIABLES (Android/iOS) ---
   final _midiPro = MidiPro();
 
+  // --- STATE ---
   bool _isInitialized = false;
 
-  // Buffer for audio generation (Linux only)
-  static const int _sampleRate = 44100;
+  // Audio Config (Desktop only)
+  static const int _sampleRate = 44400;
   static const int _bufferSize = 2048;
 
+  // --- INITIALIZATION ---
   Future<void> initialize() async {
     if (_isInitialized) return;
     try {
@@ -33,46 +35,55 @@ class AudioManager {
         await _initializeMobile();
       }
       _isInitialized = true;
-      print("Audio Initialized");
+      print("Audio Initialized Successfully");
     } catch (e) {
       print("Error initializing Audio: $e");
     }
   }
 
   Future<void> _initializeDesktop() async {
-    // Load SoundFont
-    ByteData byte = await rootBundle.load('assets/sounds/piano_font.sf2');
-    final soundFont = SoundFont.fromByteData(byte);
-    _synthesizer = Synthesizer.load(
-      soundFont,
-      SynthesizerSettings(sampleRate: _sampleRate),
-    );
+    try {
+      // 1. Load Piano SoundFont
+      ByteData pianoBytes = await rootBundle.load(
+        'assets/sounds/piano_font.sf2',
+      );
+      final soundFont = SoundFont.fromByteData(pianoBytes);
 
-    // Initialize Audio Stream
-    _audioStream = getAudioStream();
-    _audioStream!.init(
-      bufferMilliSec: 100,
-      waitingBufferMilliSec: 20,
-      channels: 2,
-      sampleRate: _sampleRate,
-    );
+      // 2. Initialize Synthesizer
+      _synthesizer = Synthesizer.load(
+        soundFont,
+        SynthesizerSettings(sampleRate: _sampleRate),
+      );
 
-    // Push data periodically
-    Timer.periodic(const Duration(milliseconds: 20), (timer) {
-      if (_synthesizer != null && _audioStream != null) {
-        _pushAudioData();
+      // 3. Init Audio Stream
+      if (_audioStream == null) {
+        _audioStream = getAudioStream();
+        _audioStream!.init(
+          bufferMilliSec: 100,
+          waitingBufferMilliSec: 20,
+          channels: 2,
+          sampleRate: _sampleRate,
+        );
+
+        // Start the audio loop
+        Timer.periodic(const Duration(milliseconds: 20), (timer) {
+          if (_synthesizer != null && _audioStream != null) {
+            _pushAudioData();
+          }
+        });
       }
-    });
-    print("Initialized Desktop Audio (Melty + MP Stream)");
+      print("Desktop Audio Ready");
+    } catch (e) {
+      print("Desktop Init Error: $e");
+    }
   }
 
   Future<void> _initializeMobile() async {
-    // Load SoundFont using loadSoundfontAsset which handles temp file internally
-    // We need to provide the full asset path
+    // Load default instrument (Piano) on startup
     await _midiPro.loadSoundfontAsset(
       assetPath: 'assets/sounds/piano_font.sf2',
     );
-    print("Initialized Mobile Audio (MidiPro)");
+    print("Mobile Audio Ready (Default Piano)");
   }
 
   void _pushAudioData() {
