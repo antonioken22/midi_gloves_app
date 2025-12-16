@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/bluetooth_provider.dart';
@@ -14,11 +13,6 @@ class TrainingScreen extends StatefulWidget {
 class _TrainingScreenState extends State<TrainingScreen> {
   String _selectedLabel = "C";
   final List<String> _labels = ["C", "D", "E", "F", "G", "A", "B", "No Note"];
-
-  // Recording State
-  bool _isRecording = false;
-  final List<List<double>> _currentSequence = [];
-  Timer? _recordingTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -109,81 +103,44 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ),
           const SizedBox(height: 30),
 
-          // Record Button ("Hold to Record")
-          GestureDetector(
-            onLongPressStart: (_) {
-              // Haptic feedback could be added here
-              setState(() {
-                _isRecording = true;
-                _currentSequence.clear();
-              });
+          // Record Button ("Tap to Record")
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final features = [
+                  gloveData.flex1.toDouble(),
+                  gloveData.flex2.toDouble(),
+                  gloveData.flex3.toDouble(),
+                  gloveData.flex4.toDouble(),
+                  gloveData.flex5.toDouble(),
+                  gloveData.accelX,
+                  gloveData.accelY,
+                  gloveData.accelZ,
+                ];
 
-              // Start sampling timer (50Hz = 20ms)
-              // 2 seconds limit = 2000ms / 20ms = 100 frames
-              _recordingTimer = Timer.periodic(
-                const Duration(milliseconds: 20),
-                (timer) {
-                  // Hard limit: 2 seconds
-                  if (_currentSequence.length >= 100) {
-                    _finishRecording();
-                    return;
-                  }
+                final sample = GestureSample(
+                  features: features,
+                  noteLabel: _selectedLabel,
+                );
 
-                  final features = [
-                    gloveData.flex1.toDouble(),
-                    gloveData.flex2.toDouble(),
-                    gloveData.flex3.toDouble(),
-                    gloveData.flex4.toDouble(),
-                    gloveData.flex5.toDouble(),
-                    gloveData.accelX,
-                    gloveData.accelY,
-                    gloveData.accelZ,
-                  ];
-                  _currentSequence.add(features);
-                },
-              );
-            },
-            onLongPressEnd: (_) {
-              if (_isRecording) {
-                _finishRecording();
-              }
-            },
-            child: Container(
-              width: double.infinity,
-              height: 60,
-              decoration: BoxDecoration(
-                color: _isRecording ? Colors.red.shade700 : Colors.redAccent,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  if (_isRecording)
-                    const BoxShadow(
-                      color: Colors.redAccent,
-                      blurRadius: 10,
-                      spreadRadius: 2,
+                await mlService.addSample(sample);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Recorded sample for $_selectedLabel'),
+                      duration: const Duration(milliseconds: 500),
                     ),
-                ],
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _isRecording
-                          ? Icons.radio_button_checked
-                          : Icons.touch_app,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _isRecording ? 'RECORDING...' : 'HOLD TO RECORD MOVEMENT',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.fiber_manual_record),
+              label: const Text('RECORD SAMPLE'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
               ),
             ),
           ),
@@ -273,47 +230,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _finishRecording() async {
-    _recordingTimer?.cancel();
-    _recordingTimer = null;
-
-    // Safety check: if already stopped
-    if (!_isRecording) return;
-
-    setState(() {
-      _isRecording = false;
-    });
-
-    final mlService = context.read<MLService>();
-
-    if (_currentSequence.length < 5) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gesture too short! Hold longer.')),
-        );
-      }
-      return;
-    }
-
-    final sample = GestureSample(
-      features: List.from(_currentSequence), // Copy
-      noteLabel: _selectedLabel,
-    );
-
-    await mlService.addSample(sample);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Recorded dynamic sample for $_selectedLabel (${_currentSequence.length} frames)',
-          ),
-          duration: const Duration(milliseconds: 500),
-        ),
-      );
-    }
   }
 
   Widget _dataChip(String label, int value) {
