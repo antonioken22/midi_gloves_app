@@ -5,10 +5,10 @@
   <p>A Thesis Project by Tres Juans</p>
 
   <p>
-    <a href="#features">Features</a> •
-    <a href="#tech-stack">Tech Stack</a> •
-    <a href="#getting-started">Getting Started</a> •
-    <a href="#download">Download</a>
+    <a href="#-key-features">Features</a> •
+    <a href="#%EF%B8%8F-tech-stack">Tech Stack</a> •
+    <a href="#-getting-started">Getting Started</a> •
+    <a href="#-download">Download</a>
   </p>
 </div>
 
@@ -16,9 +16,7 @@
 
 ## 🎹 About the Project
 
-**MIDI Gloves** is an innovative mobile application that transforms hand gestures into MIDI signals. Designed as a thesis project, it allows musicians and performers to control digital audio workstations (DAWs) wirelessly using custom-built sensor gloves.
-
-The app serves as the central hub, bridging the physical gloves with your music production software via Bluetooth Low Energy (BLE).
+**MIDI Gloves** is an innovative mobile application that transforms hand gestures into music notes. Designed as a thesis project, it allows musicians and performers to produce high quality sounds wirelessly using their custom-built sensor gloves.
 
 ## ✨ Key Features
 
